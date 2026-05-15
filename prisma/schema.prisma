@@ -1,0 +1,126 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  courses       Course[]
+  activities    Activity[]
+  preferences   UserPreferences?
+  assistantConversations AssistantConversation[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  focus       String
+  level       String
+  goals       String
+  modules     String   // JSON string of modules
+  roadmap     String   // JSON string of roadmap
+  youtubeLinks String  // JSON string of YouTube links
+  recommendedCourses String // JSON string of recommended courses
+  isSaved     Boolean  @default(false)
+  progress    Int      @default(0) // Progress percentage 0-100
+  isCompleted Boolean  @default(false)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activities  Activity[]
+}
+
+model Activity {
+  id          String   @id @default(cuid())
+  userId      String
+  courseId    String?
+  type        String   // 'course_generated', 'course_saved', 'course_viewed', etc.
+  description String
+  metadata    String?  // JSON string for additional data
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course      Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model UserPreferences {
+  id                String @id @default(cuid())
+  userId            String @unique
+  theme             String @default("light")
+  notifications     Boolean @default(true)
+  defaultFocus      String?
+  defaultLevel      String @default("Beginner")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AssistantConversation {
+  id            String   @id @default(cuid())
+  userId        String
+  title         String?
+  messages      String   // JSON string of assistant messages
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, lastMessageAt])
+}
